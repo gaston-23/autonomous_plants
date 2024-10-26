@@ -5,7 +5,7 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BME680.h"
-#include <ArduinoIoTCloud.h>
+// #include <ArduinoIoTCloud.h>
 
 // #include <WiFi.h>
 // #include "ESPAsyncWebServer.h"
@@ -26,9 +26,9 @@ Adafruit_BME680 bme(&Wire); // I2C
 // PINES
 #define SDA_PIN 1 // Pin que usarás para SDA
 #define SCL_PIN 10 // Pin que usarás para SCL
-#define LDR_PIN 3
+#define LDR_PIN 5
 #define HUM_GND_PIN 2
-#define PUMP_PIN 10
+#define PUMP_PIN 3
 
 
 float temperature;
@@ -36,6 +36,8 @@ float humidity;
 float pressure;
 float altitude;
 float gasResistance;
+float lDR;
+float hG;
 
 /////////////////////////////////////////////////////////
 
@@ -43,8 +45,55 @@ unsigned long lastTime = 0;
 unsigned long timerDelay = 30000;  // send readings timer
 int inc = 0;
 int status = 1;
+int ml = 0;
 
 
+void calcLDR() {
+  lDR = analogRead(LDR_PIN);  // Leemos el valor del pinLDR y lo guardamos en la variable creada.
+  Serial.print("LDR: ");
+  Serial.println(lDR);
+}
+
+void calcHumGround() {
+  hG = analogRead(HUM_GND_PIN);  // Leemos el valor del pinLDR y lo guardamos en la variable creada.
+  Serial.print("Hum suelo: ");
+  Serial.println(hG);
+}
+
+/**
+ * Get lectures from BME680 sensor
+ */
+void getBME680Readings(){
+  // Tell BME680 to begin measurement.
+  unsigned long endTime = bme.beginReading();
+  if (endTime == 0) {
+    Serial.println(F("Failed to begin reading :("));
+    return;
+  }
+  if (!bme.endReading()) {
+    Serial.println(F("Failed to complete reading :("));
+    return;
+  }
+  temperature = bme.temperature;
+  pressure = bme.pressure / 100.0;
+  humidity = bme.humidity;
+  gasResistance = bme.gas_resistance / 1000.0;
+}
+
+void manejoBomba(bool status) {
+  if (status) {
+    digitalWrite(PUMP_PIN, HIGH);
+  } else {
+    digitalWrite(PUMP_PIN, LOW);
+  }
+}
+
+void pumpMilliMeters(int mm) {
+  digitalWrite(PUMP_PIN, HIGH);
+  float timeToFinish = mm/33.3*1000;
+  delay(timeToFinish);
+  digitalWrite(PUMP_PIN, LOW);
+}
 
 void setup() {
   // Initialize serial and wait for port to open:
@@ -52,6 +101,7 @@ void setup() {
 
   // pins initialization
   pinMode(LDR_PIN, INPUT);
+  pinMode(HUM_GND_PIN, INPUT);
   pinMode(PUMP_PIN, OUTPUT);
 
   // Defined in thingProperties.h
@@ -120,20 +170,9 @@ void loop() {
   }
 
   
-  // delay(2000);
+  delay(3000);
 }
 
-void calcLDR() {
-  lDR = analogRead(LDR_PIN);  // Leemos el valor del pinLDR y lo guardamos en la variable creada.
-  // lDR++;
-  Serial.println(lDR);
-}
-
-void calcHumGround() {
-  lDR = analogRead(LDR_PIN);  // Leemos el valor del pinLDR y lo guardamos en la variable creada.
-  // lDR++;
-  Serial.println(lDR);
-}
 
 // void waterLevel() {
 //   float x = analogRead(LDR_PIN);
@@ -152,39 +191,4 @@ void calcHumGround() {
 //   Serial.print("temp: ");
 //   Serial.println(temp);
 // }
-
-/**
- * Get lectures from BME680 sensor
- */
-void getBME680Readings(){
-  // Tell BME680 to begin measurement.
-  unsigned long endTime = bme.beginReading();
-  if (endTime == 0) {
-    Serial.println(F("Failed to begin reading :("));
-    return;
-  }
-  if (!bme.endReading()) {
-    Serial.println(F("Failed to complete reading :("));
-    return;
-  }
-  temperature = bme.temperature;
-  pressure = bme.pressure / 100.0;
-  humidity = bme.humidity;
-  gasResistance = bme.gas_resistance / 1000.0;
-}
-
-void manejoBomba(bool status) {
-  if (status) {
-    digitalWrite(PUMP_PIN, HIGH);
-  } else {
-    digitalWrite(PUMP_PIN, LOW);
-  }
-}
-
-void pumpMilliMeters(int mm) {
-  digitalWrite(PUMP_PIN, HIGH);
-  float timeToFinish = mm/33.3*1000;
-  delay(timeToFinish);
-  digitalWrite(PUMP_PIN, LOW);
-}
 
